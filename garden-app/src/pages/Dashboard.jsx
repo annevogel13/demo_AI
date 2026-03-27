@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { db, recordCare } from '../db/db'
+import { db, recordCare, updateBatch, notifyChanged } from '../db/db'
 import { LOCATIONS, LOCATION_KEYS } from '../utils/constants'
 import { isDueForWatering } from '../utils/dateUtils'
 import BatchCard from '../components/BatchCard'
@@ -39,11 +39,12 @@ export default function Dashboard({ toast, streak, onStreakUpdate, settings }) {
     }
     await Promise.all(
       due.map(async (b) => {
-        await db.seedBatches.update(b.id, { lastWatered: now })
+        await updateBatch(b.id, { lastWatered: now })
         await db.wateringLogs.add({ batchId: b.id, timestamp: now, notes: 'bulk' })
       })
     )
     await recordCare()
+    notifyChanged()
     toast(`Watered ${due.length} plant${due.length !== 1 ? 's' : ''}! 💧`)
     onStreakUpdate()
     loadBatches()

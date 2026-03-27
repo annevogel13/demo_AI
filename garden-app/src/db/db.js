@@ -13,6 +13,16 @@ db.version(1).stores({
   careStreak: '++id',
 })
 
+// Version 2: add updatedAt index to seedBatches for sync conflict resolution
+db.version(2).stores({
+  seedBatches:
+    '++id, plantName, variety, sowingDate, location, quantity, daysToMaturity, notes, status, wateringInterval, lastWatered, createdAt, updatedAt',
+}).upgrade((tx) =>
+  tx.table('seedBatches').toCollection().modify((b) => {
+    b.updatedAt = b.createdAt ?? new Date().toISOString()
+  })
+)
+
 // Seed default settings if empty
 db.on('ready', async () => {
   const settingsCount = await db.userSettings.count()
@@ -34,7 +44,12 @@ db.on('ready', async () => {
   }
 })
 
-// Helper: get settings (always id=1)
+// Fire a browser event so the sync hook knows to push after a local write
+export function notifyChanged() {
+  window.dispatchEvent(new Event('garden-changed'))
+}
+
+// Helper: get settings
 export async function getSettings() {
   return db.userSettings.toCollection().first()
 }
@@ -51,7 +66,7 @@ export async function getStreak() {
 export async function recordCare() {
   const streak = await getStreak()
   const today = new Date().toDateString()
-  if (streak.lastCareDate === today) return streak // already recorded today
+  if (streak.lastCareDate === today) return streak
 
   const yesterday = new Date(Date.now() - 86400000).toDateString()
   const newStreak =
@@ -63,7 +78,14 @@ export async function recordCare() {
     currentStreak: newStreak,
     longestStreak: longest,
   })
+  notifyChanged()
   return { ...streak, currentStreak: newStreak, longestStreak: longest }
+}
+
+// Wrapper for batch updates that stamps updatedAt and fires sync
+export async function updateBatch(id, data) {
+  await db.seedBatches.update(id, { ...data, updatedAt: new Date().toISOString() })
+  notifyChanged()
 }
 
 export function currentSeason() {
@@ -123,4 +145,5 @@ export async function importAllData(jsonString) {
       if (data.streak?.length) await db.careStreak.bulkAdd(data.streak)
     }
   )
+  notifyChanged()
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { db, recordCare } from '../db/db'
+import { db, recordCare, updateBatch, notifyChanged } from '../db/db'
 import { daysSince, expectedHarvestDate, formatDate, isDueForWatering, daysUntilHarvest } from '../utils/dateUtils'
 import { LOCATIONS, LOCATION_KEYS, STATUSES } from '../utils/constants'
 import StatusBadge from './StatusBadge'
@@ -15,16 +15,17 @@ export default function BatchCard({ batch, rainExpected, onUpdate, onSelect, toa
 
   async function handleWater() {
     const now = new Date().toISOString()
-    await db.seedBatches.update(batch.id, { lastWatered: now })
+    await updateBatch(batch.id, { lastWatered: now })
     await db.wateringLogs.add({ batchId: batch.id, timestamp: now, notes: '' })
     await recordCare()
+    notifyChanged()
     toast(`Your ${batch.plantName} got a drink! 💧`)
     onUpdate()
   }
 
   async function handleStatusChange(e) {
     const newStatus = e.target.value
-    await db.seedBatches.update(batch.id, { status: newStatus })
+    await updateBatch(batch.id, { status: newStatus })
     const s = STATUSES.find((x) => x.key === newStatus)
     toast(`${batch.plantName} is now ${s?.label}! ${s?.emoji}`)
     onUpdate()
@@ -38,7 +39,8 @@ export default function BatchCard({ batch, rainExpected, onUpdate, onSelect, toa
       date: new Date().toISOString(),
       notes: '',
     })
-    await db.seedBatches.update(batch.id, { location: newLoc })
+    await updateBatch(batch.id, { location: newLoc })
+    notifyChanged()
     toast(`${batch.plantName} moved to ${LOCATIONS[newLoc].title}! 🚚`)
     setMoving(false)
     onUpdate()

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getSettings, getStreak } from './db/db'
 import { useToast } from './hooks/useToast'
+import { useSync } from './hooks/useSync'
 import ToastContainer from './components/ToastContainer'
 import Dashboard from './pages/Dashboard'
 import HarvestPage from './pages/HarvestPage'
@@ -14,21 +15,42 @@ const TABS = [
   { key: 'settings', label: 'Settings', emoji: '⚙️' },
 ]
 
+const SYNC_DOT = {
+  connected:    'bg-green-400',
+  connecting:   'bg-yellow-400 animate-pulse',
+  disconnected: 'bg-red-400',
+}
+const SYNC_LABEL = {
+  connected:    'Synced',
+  connecting:   'Connecting…',
+  disconnected: 'Offline',
+}
+
 export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [settings, setSettings] = useState(null)
   const [streak, setStreak] = useState(null)
   const { toasts, addToast } = useToast()
 
-  useEffect(() => {
-    loadGlobalData()
-  }, [])
-
-  async function loadGlobalData() {
+  const loadGlobalData = useCallback(async () => {
     const [s, str] = await Promise.all([getSettings(), getStreak()])
     setSettings(s)
     setStreak(str)
-  }
+  }, [])
+
+  // Called whenever a remote sync merge completes — refresh everything
+  const handleMerged = useCallback(() => {
+    loadGlobalData()
+    // Force Dashboard to reload its batches by bumping a key
+    setRefreshKey((k) => k + 1)
+  }, [loadGlobalData])
+
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { status: syncStatus } = useSync(handleMerged)
+
+  useEffect(() => {
+    loadGlobalData()
+  }, [loadGlobalData])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -39,13 +61,23 @@ export default function App() {
             <span className="text-2xl">🌿</span>
             <span className="font-bold text-green-800 text-lg tracking-tight">Garden Tracker</span>
           </div>
-          <div className="text-xs text-green-500 font-medium">
+
+          <div className="flex items-center gap-3">
+            {/* Streak */}
             {streak?.currentStreak > 0 && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 text-xs font-medium text-orange-500">
                 <span className="flame">🔥</span>
                 {streak.currentStreak}d
               </span>
             )}
+            {/* Sync indicator */}
+            <span
+              title={SYNC_LABEL[syncStatus]}
+              className="flex items-center gap-1.5 text-xs text-slate-400"
+            >
+              <span className={`w-2 h-2 rounded-full inline-block ${SYNC_DOT[syncStatus]}`} />
+              {SYNC_LABEL[syncStatus]}
+            </span>
           </div>
         </div>
       </header>
@@ -54,14 +86,15 @@ export default function App() {
       <main className="max-w-2xl mx-auto px-4 py-5 pb-28">
         {tab === 'dashboard' && (
           <Dashboard
+            key={refreshKey}
             toast={addToast}
             streak={streak}
             onStreakUpdate={loadGlobalData}
             settings={settings}
           />
         )}
-        {tab === 'harvest' && <HarvestPage />}
-        {tab === 'season' && <SeasonSummary />}
+        {tab === 'harvest' && <HarvestPage key={refreshKey} />}
+        {tab === 'season' && <SeasonSummary key={refreshKey} />}
         {tab === 'settings' && <SettingsPage toast={addToast} />}
       </main>
 
