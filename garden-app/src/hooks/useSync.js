@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { db, exportAllData } from '../db/db'
 
 // Merge remote state into local IndexedDB without overwriting newer local data.
@@ -64,7 +64,8 @@ async function mergeRemote(remote) {
 // Derive the sync-server URL from whatever host the browser used to load the app,
 // so it works on both PC (localhost) and phone (192.168.x.x).
 function getSyncUrl() {
-  return `ws://${window.location.hostname}:3001`
+  const port = import.meta.env.VITE_SYNC_PORT || '3001'
+  return `ws://${window.location.hostname}:${port}`
 }
 
 export function useSync(onMerged) {

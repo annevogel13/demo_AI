@@ -1,16 +1,44 @@
-# React + Vite
+# Garden Tracker Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Offline-first garden tracker built with React + Vite + IndexedDB (Dexie), with optional local-network sync over WebSocket.
 
-Currently, two official plugins are available:
+## Quick start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run start:demo
+```
 
-## React Compiler
+- App UI: `http://localhost:5173` (or next available port)
+- Sync server: `ws://localhost:3101`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+`npm start` runs both frontend and sync server together.
+`npm run start:demo` does the same, but pins sync to port `3101` for fewer local conflicts.
 
-## Expanding the ESLint configuration
+## Demo checklist
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Open the app in browser and add a seed batch.
+2. Water or move a batch so the dashboard updates.
+3. Open Settings and export a backup JSON.
+4. (Optional, multi-device) Open from another device on same Wi-Fi and verify sync status.
+
+## Useful scripts
+
+- `npm run dev` → frontend only
+- `npm run sync` → sync server only
+- `npm run start:demo` → preferred demo launch (uses port 3101)
+- `npm run build` → production build check
+- `npm run lint` → code linting
+
+## Port configuration (optional)
+
+If your environment already uses port `3001`, configure both app and sync server to another port:
+
+```bash
+VITE_SYNC_PORT=3101 SYNC_PORT=3101 npm start
+```
+
+## Notes
+
+- If sync port is unavailable, the app still runs; only cross-device sync is disabled.
+- Data is stored locally in browser IndexedDB.

@@ -1,10 +1,12 @@
 // Lightweight local-network sync server for Garden Tracker
 // Runs alongside Vite. All devices on the same Wi-Fi connect to this.
 
+import { createServer } from 'node:http'
 import { WebSocketServer } from 'ws'
 
-const PORT = 3001
-const wss = new WebSocketServer({ port: PORT, host: '0.0.0.0' })
+const PORT = Number(process.env.SYNC_PORT || 3001)
+const server = createServer()
+const wss = new WebSocketServer({ server })
 
 // The last known full state of the garden database
 let latestState = null
@@ -47,4 +49,15 @@ wss.on('connection', (ws) => {
   })
 })
 
-console.log(`[sync] Garden Tracker sync server listening on ws://0.0.0.0:${PORT}`)
+server.on('error', (err) => {
+  if (err?.code === 'EADDRINUSE') {
+    console.warn(`[sync] Port ${PORT} is already in use. Sync server is unavailable; app can still run without device sync.`)
+    process.exit(0)
+  }
+  console.warn('[sync] Server error:', err.message)
+  process.exit(1)
+})
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`[sync] Garden Tracker sync server listening on ws://0.0.0.0:${PORT}`)
+})

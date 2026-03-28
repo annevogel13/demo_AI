@@ -7,6 +7,7 @@
     "dev": "vite",
     "sync": "node sync-server.js",
     "start": "concurrently \"npm run dev\" \"npm run sync\"",
+    "start:demo": "VITE_SYNC_PORT=3101 SYNC_PORT=3101 concurrently \"npm run dev\" \"npm run sync\"",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
